@@ -49,24 +49,41 @@ public class MainActivity extends AppCompatActivity {
             public boolean onScale(ScaleGestureDetector detector) {
                 if(!scale) {
                     if(detector.getScaleFactor()>=1) {
-                        scaleFactor *= detector.getScaleFactor() * 1.05;
+                        scaleFactor *= detector.getScaleFactor() * 1.03;
                     }else{
-                        scaleFactor *= detector.getScaleFactor() * 0.9;
+                        scaleFactor *= detector.getScaleFactor();
                     }
                 }else{
                     scale = false;
                 }
-                text.setText(String.valueOf(scaleFactor) + "  " + String.valueOf(detector.getScaleFactor()));
                 scaleFactor = Math.max(1.5f, Math.min(scaleFactor, 8.0f));
                 europe.setScaleX(scaleFactor);
                 europe.setScaleY(scaleFactor);
-                lastFactor = detector.getScaleFactor();
+                if(scaleFactor<lastFactor){
+                    if(europe.getX()<0) {
+                        europe.setX(europe.getX() + 50);
+                    }
+                    if(europe.getX()>0) {
+                        europe.setX(europe.getX() - 50);
+                    }
+                    if(europe.getY()<0) {
+                        europe.setY(europe.getY() + 50);
+                    }
+                    if(europe.getY()>0) {
+                        europe.setY(europe.getY() - 50);
+                    }
+                    if(scaleFactor>=1.5f && scaleFactor<=1.6f) {
+                        europe.setX(0);
+                        europe.setY(0);
+                    }
+                }
+                lastFactor = scaleFactor;
                 return true;
             }
         });
         screen.setOnTouchListener(new View.OnTouchListener() {
             int currentX, currentY, x, y;
-            double check;
+            double checkX,checkY;
 
             @Override
             public boolean onTouch(View v, MotionEvent event) {
@@ -82,13 +99,20 @@ public class MainActivity extends AppCompatActivity {
                         if(mode[0]) {
                             x = (int) event.getX(0);
                             y = (int) event.getY(0);
-                            check = (europe.getWidth() * scaleFactor - europe.getWidth()) / 4;
-                            if (europe.getX() < 0 + check) {
+                            checkX = ((europe.getWidth()-275) * scaleFactor - europe.getWidth())/2;
+                            checkY = ((europe.getHeight()-10) * scaleFactor - europe.getHeight())/2;
+                            text.setText(String.valueOf(currentX - x) + "  " + String.valueOf(checkX));
+                            if (europe.getX() < 0 + checkX && (europe.getX()*-1) < checkX) {
                                 europe.setX(europe.getX() - (currentX - x));
-                            } else if (currentX - x >= 0) {
+                            } else if ((currentX - x >= 0 && europe.getX() >= 0) || ( currentX - x <= 0 && (europe.getX()*-1) >= checkX)) {
                                 europe.setX(europe.getX() - (currentX - x));
                             }
-                            europe.setY(europe.getY() - (currentY - y));
+
+                            if (europe.getY() < 0 + checkY && (europe.getY()*-1) < checkY) {
+                                europe.setY(europe.getY() - (currentY - y));
+                            } else if ((currentY - y >= 0 && europe.getY() >= 0) || ( currentY - y <= 0 && (europe.getY()*-1) >= checkY)) {
+                                europe.setY(europe.getY() - (currentY - y));
+                            }
                             currentX = x;
                             currentY = y;
                         }
