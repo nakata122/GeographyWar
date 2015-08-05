@@ -21,11 +21,13 @@ import android.widget.Toast;
 public class MainActivity extends AppCompatActivity {
     //mode[0] drag  mode[1] zoom
     boolean[] mode={true,false};
+    boolean scale = false;
     RelativeLayout screen;
     ImageView europe;
     ScaleGestureDetector detect;
+    Matrix mat = new Matrix();
     TextView text;
-    float scaleFactor=1.5f;
+    float scaleFactor=1.5f,lastFactor=1.5f;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -45,10 +47,20 @@ public class MainActivity extends AppCompatActivity {
             }
             @Override
             public boolean onScale(ScaleGestureDetector detector) {
-                scaleFactor *= detector.getScaleFactor();
+                if(!scale) {
+                    if(detector.getScaleFactor()>=1) {
+                        scaleFactor *= detector.getScaleFactor() * 1.05;
+                    }else{
+                        scaleFactor *= detector.getScaleFactor() * 0.9;
+                    }
+                }else{
+                    scale = false;
+                }
+                text.setText(String.valueOf(scaleFactor) + "  " + String.valueOf(detector.getScaleFactor()));
                 scaleFactor = Math.max(1.5f, Math.min(scaleFactor, 8.0f));
                 europe.setScaleX(scaleFactor);
                 europe.setScaleY(scaleFactor);
+                lastFactor = detector.getScaleFactor();
                 return true;
             }
         });
@@ -70,8 +82,8 @@ public class MainActivity extends AppCompatActivity {
                         if(mode[0]) {
                             x = (int) event.getX(0);
                             y = (int) event.getY(0);
-                            check = (europe.getWidth() * (scaleFactor - 0.5) - europe.getWidth()) / 4;
-                            if (europe.getX() < 0 + check && europe.getX() > europe.getWidth() - check) {
+                            check = (europe.getWidth() * scaleFactor - europe.getWidth()) / 4;
+                            if (europe.getX() < 0 + check) {
                                 europe.setX(europe.getX() - (currentX - x));
                             } else if (currentX - x >= 0) {
                                 europe.setX(europe.getX() - (currentX - x));
@@ -82,8 +94,12 @@ public class MainActivity extends AppCompatActivity {
                         }
                             break;
                     case MotionEvent.ACTION_POINTER_DOWN:
+                        scale = true;
                         mode[1] = true;
                         mode[0] = false;
+                        break;
+                    case MotionEvent.ACTION_UP:
+                        scale = false;
                         break;
                 }
 
