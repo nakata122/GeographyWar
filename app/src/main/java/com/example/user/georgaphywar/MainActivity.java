@@ -1,120 +1,92 @@
 package com.example.user.georgaphywar;
 
+import android.graphics.Matrix;
 import android.os.Bundle;
+import android.support.v4.widget.ViewDragHelper;
 import android.support.v7.app.AppCompatActivity;
+import android.view.GestureDetector;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
+import android.view.ScaleGestureDetector;
 import android.view.View;
+import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
+import android.widget.ScrollView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 public class MainActivity extends AppCompatActivity {
+    //mode[0] drag  mode[1] zoom
     boolean[] mode={true,false};
-    float scaleX=1.5f,scaleY=1.5f;
     RelativeLayout screen;
     ImageView europe;
+    ScaleGestureDetector detect;
+    TextView text;
+    float scaleFactor=1.5f;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        text = (TextView) findViewById(R.id.textView);
         screen = (RelativeLayout) findViewById(R.id.rel);
         europe = (ImageView) findViewById(R.id.europe);
-        screen.setScaleX(scaleX);
-        screen.setScaleY(scaleY);
+        europe.setScaleX(scaleFactor);
+        europe.setScaleY(scaleFactor);
+        detect = new ScaleGestureDetector(this, new ScaleGestureDetector.OnScaleGestureListener() {
+            @Override
+            public void onScaleEnd(ScaleGestureDetector detector) {
+            }
+            @Override
+            public boolean onScaleBegin(ScaleGestureDetector detector) {
+                return true;
+            }
+            @Override
+            public boolean onScale(ScaleGestureDetector detector) {
+                scaleFactor *= detector.getScaleFactor();
+                scaleFactor = Math.max(1.5f, Math.min(scaleFactor, 8.0f));
+                europe.setScaleX(scaleFactor);
+                europe.setScaleY(scaleFactor);
+                return true;
+            }
+        });
         screen.setOnTouchListener(new View.OnTouchListener() {
-            int currentX, currentY,x,y,x2,y2,currentX2=0,currentY2;
-            @SuppressWarnings("deprecation")
+            int currentX, currentY, x, y;
+            double check;
+
             @Override
             public boolean onTouch(View v, MotionEvent event) {
-                switch (event.getAction()) {
-                    case MotionEvent.ACTION_POINTER_2_UP:{
-                        currentX = (int) event.getX(0);
-                        currentY = (int) event.getY(0);
-                        mode[1] = false;
-                        break;
-                    }
-                    case MotionEvent.ACTION_POINTER_1_UP:{
-                        mode[0] = false;
-                        currentX2 = (int) event.getX(1);
-                        currentY2 = (int) event.getY(1);
-                        break;
-                    }
-                    case MotionEvent.ACTION_POINTER_1_DOWN:{
-                        currentX = (int) event.getX(0);
-                        currentY = (int) event.getY(0);
-                        mode[0]=true;
-                        mode[1] = false;
-                        break;
-                    }
-                    case MotionEvent.ACTION_POINTER_2_DOWN:{
-                        mode[1] = true;
-                        Toast.makeText(getApplication(),String.valueOf(europe.getX()),Toast.LENGTH_SHORT).show();
-                        currentX2 = (int) event.getX(1);
-                        currentY2 = (int) event.getY(1);
-                        break;
-                    }
-                    case MotionEvent.ACTION_DOWN: {
+                switch (event.getAction() & event.getActionMasked()){
+                    case MotionEvent.ACTION_DOWN:
                         mode[0] = true;
                         mode[1] = false;
-                        currentX = (int) event.getX(0);
-                        currentY = (int) event.getY(0);
+                        currentX = (int) event.getX();
+                        currentY = (int) event.getY();
                         break;
-                    }
-                    case MotionEvent.ACTION_MOVE: {
-                        if(mode[0]){
-                            if(!mode[1]){
-                                x = (int) event.getX(0);
-                                y = (int) event.getY(0);
-                                if(europe.getX()>0 && europe.getX()<=200) {
-                                    europe.setX(europe.getX() - (currentX - x));
-                                }else if(currentX - x>=0){
-                                    europe.setX(europe.getX() - (currentX - x));
-                                }
-                                europe.setY(europe.getY() - (currentY - y));
-                                currentX = x;
-                                currentY = y; }
-                            if(mode[1]){
-                                if(event.getX(1)>=event.getX(0)){
-                                    if(event.getX(1)>=currentX2&&scaleX<=5){
-                                        scaleX+=0.1;
-                                        scaleY+=0.1;
-                                    }
-                                    if(event.getX(1)<=currentX2&&scaleX>=1.1){
-                                        scaleX-=0.1;
-                                        scaleY-=0.1;
-                                    }
-                                }
-                                else if(event.getX(1)<event.getX(0)){
-                                    if(event.getX(1)<=currentX2&&scaleX<=5){
-                                        scaleX+=0.1;
-                                        scaleY+=0.1;
-                                    }
-                                    if(event.getX(1)>=currentX2&&scaleX>=1.1){
-                                        scaleX-=0.1;
-                                        scaleY-=0.1;
-                                    }
-                                }
-                                screen.setScaleX(scaleX);
-                                screen.setScaleY(scaleY);
+                    case MotionEvent.ACTION_MOVE:
+                        if(mode[1]) detect.onTouchEvent(event);
+                        if(mode[0]) {
+                            x = (int) event.getX(0);
+                            y = (int) event.getY(0);
+                            check = (europe.getWidth() * (scaleFactor - 0.5) - europe.getWidth()) / 4;
+                            if (europe.getX() < 0 + check && europe.getX() > europe.getWidth() - check) {
+                                europe.setX(europe.getX() - (currentX - x));
+                            } else if (currentX - x >= 0) {
+                                europe.setX(europe.getX() - (currentX - x));
                             }
+                            europe.setY(europe.getY() - (currentY - y));
+                            currentX = x;
+                            currentY = y;
                         }
-                        if(!mode[0]&&mode[1]){
-                            x2 = (int) event.getX(0);
-                            y2 = (int) event.getY(0);
-                            europe.scrollBy(currentX2 - x2,currentY2-y2);
-                            currentX2 = x2;
-                            currentY2 = y2;
                             break;
-                        }
+                    case MotionEvent.ACTION_POINTER_DOWN:
+                        mode[1] = true;
+                        mode[0] = false;
                         break;
-                    }
-                    case MotionEvent.ACTION_UP:{
-                        break;
-                    }
-
                 }
+
                 return true;
             }
         });
