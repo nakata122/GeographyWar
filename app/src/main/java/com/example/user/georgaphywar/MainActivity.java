@@ -1,53 +1,101 @@
 package com.example.user.georgaphywar;
 
+import android.app.AlertDialog;
+import android.app.Dialog;
+import android.content.DialogInterface;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.Color;
-import android.graphics.Matrix;
-import android.graphics.drawable.BitmapDrawable;
-import android.graphics.drawable.Drawable;
+import android.media.Image;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.CountDownTimer;
-import android.provider.CalendarContract;
-import android.support.v4.widget.ViewDragHelper;
+import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
-import android.view.GestureDetector;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.View;
-import android.widget.HorizontalScrollView;
+import android.view.Window;
+import android.view.WindowManager;
+import android.widget.Button;
 import android.widget.ImageView;
-import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
-import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
-
-import java.util.Timer;
-import java.util.TimerTask;
 
 public class MainActivity extends AppCompatActivity {
     //mode[0] drag  mode[1] zoom
     boolean[] mode={true,false};
-    boolean scale = false, br = false, timerEnd = true;
+    boolean scale = false, br = false, first = true, isFirstClosed = false;
     RelativeLayout screen;
     ImageView europe;
     ScaleGestureDetector detect;
     TextView text;
-    float scaleFactor=1.5f,lastFactor=1.5f;
+    float scaleFactor=1.8f,lastFactor=1.8f;
     Bitmap bitmap,map;
+    Dialog level;
+    Checking check;
+    String col;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        bitmap = BitmapFactory.decodeResource(getResources(), R.drawable.europe_small);
+        bitmap = BitmapFactory.decodeResource(getResources(), R.drawable.europe_map);
         text = (TextView) findViewById(R.id.textView);
         screen = (RelativeLayout) findViewById(R.id.rel);
         europe = (ImageView) findViewById(R.id.europe);
         europe.setScaleX(scaleFactor);
         europe.setScaleY(scaleFactor);
+        check = new Checking();
+        //the dialog
+            level = new Dialog(this);
+            level.setTitle("Choose your difficulty.");
+            level.setContentView(R.layout.popup);
+            level.setCancelable(false);
+            level.setCanceledOnTouchOutside(false);
+            Button easy = (Button) level.findViewById(R.id.easy);
+            easy.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    isFirstClosed = true;
+                    level.dismiss();
+                }
+            });
+            Button medium = (Button) level.findViewById(R.id.medium);
+            medium.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    level.dismiss();
+                    isFirstClosed = true;
+                }
+            });
+            Button hard = (Button) level.findViewById(R.id.hard);
+            hard.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    level.dismiss();
+                    isFirstClosed = true;
+                }
+            });
+            level.show();
+
+        final Handler h = new Handler();
+        h.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                if(isFirstClosed) {
+                    alertDialog();
+                }
+                if(!isFirstClosed)
+                    h.postDelayed(this,500);
+            }
+        }, 10);
+
+
+
         detect = new ScaleGestureDetector(this, new ScaleGestureDetector.OnScaleGestureListener() {
             @Override
             public void onScaleEnd(ScaleGestureDetector detector) {
@@ -69,7 +117,7 @@ public class MainActivity extends AppCompatActivity {
                 } else {
                     scale = false;
                 }
-                scaleFactor = Math.max(1.5f, Math.min(scaleFactor, 6.0f));
+                scaleFactor = Math.max(1.8f, Math.min(scaleFactor, 6.0f));
                 europe.setScaleX(scaleFactor);
                 europe.setScaleY(scaleFactor);
                 if (scaleFactor < lastFactor) {
@@ -88,19 +136,29 @@ public class MainActivity extends AppCompatActivity {
             public boolean onTouch(View v, final MotionEvent event) {
                 switch (event.getAction() & event.getActionMasked()) {
                     case MotionEvent.ACTION_DOWN:
+                        if(first)
+                            map = Bitmap.createScaledBitmap(bitmap, (int) (europe.getWidth()*(scaleFactor/1.8)), (int) (europe.getHeight()*(scaleFactor)),true);
+                        first = false;
                         mode[0] = false;
                         mode[1] = false;
                         currentX = (int) event.getX();
                         currentY = (int) event.getY();
                         if(br) {
-                            map = Bitmap.createScaledBitmap(bitmap, (int) (europe.getWidth()*(scaleFactor/1.5)), (int) (europe.getHeight()*(scaleFactor)),true);
 //                            DrawBitmap bit = new DrawBitmap(getApplicationContext(),map);
 //                            screen.addView(bit);
-                            float outX = (europe.getWidth()*(scaleFactor/1.5f) - europe.getWidth())/2;
+                            ImageView pin = new ImageView(MainActivity.this);
+                            pin.setImageResource(R.drawable.albania);
+                            screen.addView(pin);
+                            float outX = (europe.getWidth()*(scaleFactor/1.8f) - europe.getWidth())/2;
                             float outY = (europe.getHeight()*(scaleFactor) - europe.getHeight())/2;
                             int color = map.getPixel((int) (event.getX() + (outX - europe.getX())), (int) (event.getY() + (outY - europe.getY())));
-                            text.setText(String.valueOf(Integer.toHexString(color)));
+                            col = String.valueOf(Integer.toHexString(color));
+                            col = col.substring(2);
+                            if(col.equals(check.getColor())){
+                                alertDialog();
+                            }
                             text.setTextColor(color);
+                            text.setText(String.valueOf((event.getX() + (outX - europe.getX()))/scaleFactor) + "   " + String.valueOf((event.getY() + (outY - europe.getY()))/scaleFactor));
                         }
 
                         break;
@@ -110,7 +168,7 @@ public class MainActivity extends AppCompatActivity {
                         if (mode[0]) {
                             x = (int) event.getX(0);
                             y = (int) event.getY(0);
-                            checkX = ((europe.getWidth() - 275) * scaleFactor - europe.getWidth()) / 2;
+                            checkX = ((europe.getWidth()) * (scaleFactor/1.8) - europe.getWidth()) / 2;
                             checkY = ((europe.getHeight() - 10) * scaleFactor - europe.getHeight()) / 2;
                             if (europe.getX() < 0 + checkX && (europe.getX() * -1) < checkX) {
                                 europe.setX(europe.getX() - (currentX - x));
@@ -132,13 +190,13 @@ public class MainActivity extends AppCompatActivity {
                         mode[1] = true;
                         mode[0] = false;
                         break;
-//                    case MotionEvent.ACTION_POINTER_UP:
-//                        map = Bitmap.createScaledBitmap(bitmap, (int) (europe.getWidth() * scaleFactor), (int) (europe.getHeight() * scaleFactor),true);
-//                        break;
+                    case MotionEvent.ACTION_POINTER_UP:
+                    map = Bitmap.createScaledBitmap(bitmap, (int) (europe.getWidth()*(scaleFactor/1.8)), (int) (europe.getHeight()*(scaleFactor)),true);
+                    break;
                     case MotionEvent.ACTION_UP:
                         scale = false;
-                        if(!mode[1] && !mode[0]) br = true;
-                        else br = true;
+                        if(!mode[1]) br = true;
+                        else br = false;
                         break;
                 }
 
@@ -146,25 +204,21 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_main, menu);
-        return true;
-    }
 
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
+    private void alertDialog(){
+        AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+        builder.setTitle("You are looking for: " + check.getRandom());
+        builder.create();
+        final AlertDialog alertdialog = builder.create();
+        alertdialog.show();
+        new CountDownTimer(2000, 1000) {
 
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
-        }
+            public void onTick(long millisUntilFinished) {
+            }
 
-        return super.onOptionsItemSelected(item);
+            public void onFinish() {
+                alertdialog.dismiss();
+            }
+        }.start();
     }
 }
